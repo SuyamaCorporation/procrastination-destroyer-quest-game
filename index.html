@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>先延ばし撃退クエストゲーム</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+<div class="max-w-2xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-center mb-1">⚔️ 先延ばし撃退クエスト</h1>
+  <p class="text-center text-gray-400 mb-6">タスクをRPGクエストに変えて倒せ！</p>
+
+  <div class="grid grid-cols-3 gap-3 mb-4">
+    <div class="bg-gray-800 rounded-xl p-3 text-center">
+      <div class="text-yellow-400 text-2xl font-bold" id="stat-level">Lv.1</div>
+      <div class="text-gray-400 text-xs">レベル</div>
+    </div>
+    <div class="bg-gray-800 rounded-xl p-3 text-center">
+      <div class="text-green-400 text-2xl font-bold" id="stat-xp">0</div>
+      <div class="text-gray-400 text-xs">経験値</div>
+    </div>
+    <div class="bg-gray-800 rounded-xl p-3 text-center">
+      <div class="text-red-400 text-2xl font-bold" id="stat-defeated">0</div>
+      <div class="text-gray-400 text-xs">撃破数</div>
+    </div>
+  </div>
+
+  <div class="bg-gray-800 rounded-xl p-4 mb-4">
+    <div class="flex justify-between text-xs text-gray-400 mb-1">
+      <span>HP</span>
+      <span id="hp-text">100 / 100</span>
+    </div>
+    <div class="bg-gray-700 rounded-full h-3 mb-3">
+      <div id="hp-bar" class="bg-red-500 h-3 rounded-full transition-all duration-500" style="width:100%"></div>
+    </div>
+    <div class="flex justify-between text-xs text-gray-400 mb-1">
+      <span>XP (次のレベルまで)</span>
+      <span id="xp-text">0 / 100</span>
+    </div>
+    <div class="bg-gray-700 rounded-full h-3">
+      <div id="xp-bar" class="bg-green-500 h-3 rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="bg-gray-800 rounded-xl p-5 mb-4">
+    <h2 class="text-lg font-bold mb-3">➕ 新しいクエスト（タスク）を追加</h2>
+    <div class="flex flex-col gap-2">
+      <div>
+        <label for="task-name" class="block text-sm text-gray-400 mb-1">タスク名</label>
+        <input id="task-name" type="text" placeholder="例: 確定申告書類を整理する" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-400">
+      </div>
+      <div>
+        <label for="task-difficulty" class="block text-sm text-gray-400 mb-1">難易度（ボスの強さ）</label>
+        <select id="task-difficulty" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-400">
+          <option value="slime">🟢 スライム（5分以内の軽タスク）</option>
+          <option value="goblin">🟡 ゴブリン（30分程度のタスク）</option>
+          <option value="orc">🟠 オーク（数時間のタスク）</option>
+          <option value="dragon">🔴 ドラゴン（1日以上の大タスク）</option>
+        </select>
+      </div>
+      <button id="btn-add-task" class="bg-blue-600 hover:bg-blue-500 py-2 rounded-lg font-bold" aria-label="クエストを追加">⚔️ クエストに追加</button>
+    </div>
+  </div>
+
+  <div class="bg-gray-800 rounded-xl p-5 mb-4">
+    <h2 class="text-lg font-bold mb-3">📜 クエスト一覧</h2>
+    <div id="quest-list" class="space-y-2"></div>
+    <p id="empty-msg" class="text-gray-500 text-sm text-center py-4">クエストがありません。タスクを追加してください！</p>
+  </div>
+
+  <div id="boss-battle" class="hidden bg-gradient-to-br from-red-900 to-gray-900 border border-red-700 rounded-xl p-5 mb-4">
+    <h2 class="text-xl font-bold text-red-300 mb-3 text-center">⚡ ボス戦！</h2>
+    <div id="boss-display" class="text-center text-7xl mb-3"></div>
+    <div id="boss-name" class="text-center font-bold text-red-200 mb-4"></div>
+    <div class="bg-gray-700 rounded-full h-4 mb-4">
+      <div id="boss-hp-bar" class="bg-red-500 h-4 rounded-full transition-all duration-700" style="width:100%"></div>
+    </div>
+    <div id="battle-log" class="bg-black bg-opacity-40 rounded-lg p-3 text-sm text-green-300 mb-4 min-h-16 font-mono"></div>
+    <div class="flex gap-2 justify-center">
+      <button id="btn-attack" class="bg-red-600 hover:bg-red-500 px-6 py-3 rounded-lg font-bold text-lg" aria-label="攻撃する">⚔️ 攻撃！（タスク完了）</button>
+      <button id="btn-flee" class="bg-gray-600 hover:bg-gray-500 px-4 py-3 rounded-lg" aria-label="逃げる">🏃 逃げる</button>
+    </div>
+  </div>
+
+  <div id="levelup-popup" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-yellow-900 border-2 border-yellow-400 rounded-xl p-8 text-center max-w-xs">
+      <div class="text-5xl mb-3">🌟</div>
+      <div class="text-2xl font-bold text-yellow-300 mb-2">レベルアップ！</div>
+      <div id="levelup-msg" class="text-yellow-100 mb-4"></div>
+      <button id="btn-close-levelup" class="bg-yellow-600 hover:bg-yellow-500 px-6 py-2 rounded-lg font-bold" aria-label="閉じる">つづける</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+const MONSTERS = {
+  slime:  { emoji: '🟢', name: 'スライム',  hp: 30,  xp: 20,  dmg: 5 },
+  goblin: { emoji: '👺', name: 'ゴブリン', hp: 60,  xp: 50,  dmg: 10 },
+  orc:    { emoji: '👹', name: 'オーク',    hp: 120, xp: 100, dmg: 20 },
+  dragon: { emoji: '🐉', name: 'ドラゴン', hp: 300, xp: 300, dmg: 40 },
+};
+
+const STORAGE_KEY = 'app_procrastination-destroyer-quest-game';
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {
+  level: 1, xp: 0, hp: 100, maxHp: 100, defeated: 0,
+  quests: [], activeBoss: null, bossHp: 0
+};
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function xpThreshold(lv) { return lv * 100; }
+
+function render() {
+  document.getElementById('stat-level').textContent = `Lv.${state.level}`;
+  document.getElementById('stat-xp').textContent = state.xp;
+  document.getElementById('stat-defeated').textContent = state.defeated;
+
+  const hpPct = Math.max(0, (state.hp / state.maxHp) * 100);
+  document.getElementById('hp-bar').style.width = hpPct + '%';
+  document.getElementById('hp-text').textContent = `${state.hp} / ${state.maxHp}`;
+
+  const xpNeeded = xpThreshold(state.level);
+  const xpPct = Math.min(100, (state.xp / xpNeeded) * 100);
+  document.getElementById('xp-bar').style.width = xpPct + '%';
+  document.getElementById('xp-text').textContent = `${state.xp} / ${xpNeeded}`;
+
+  renderQuests();
+  if (state.activeBoss) {
+    document.getElementById('boss-battle').classList.remove('hidden');
+    const m = MONSTERS[state.activeBoss.type];
+    document.getElementById('boss-display').textContent = m.emoji;
+    document.getElementById('boss-name').textContent = `${m.name}「${state.activeBoss.name}」`;
+    const bossPct = Math.max(0, (state.bossHp / m.hp) * 100);
+    document.getElementById('boss-hp-bar').style.width = bossPct + '%';
+  } else {
+    document.getElementById('boss-battle').classList.add('hidden');
+    document.getElementById('battle-log').textContent = '';
+  }
+}
+
+function renderQuests() {
+  const listEl = document.getElementById('quest-list');
+  const emptyEl = document.getElementById('empty-msg');
+  listEl.innerHTML = '';
+  if (state.quests.length === 0) {
+    emptyEl.classList.remove('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  state.quests.forEach((q, i) => {
+    const m = MONSTERS[q.type];
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between bg-gray-700 rounded-lg p-3';
+
+    const left = document.createElement('div');
+    left.className = 'flex items-center gap-2';
+    const icon = document.createElement('span');
+    icon.className = 'text-2xl';
+    icon.textContent = m.emoji;
+    const info = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'font-bold text-sm';
+    nameEl.textContent = q.name;
+    const badge = document.createElement('div');
+    badge.className = 'text-xs text-gray-400';
+    badge.textContent = `${m.name} | XP +${m.xp}`;
+    info.appendChild(nameEl);
+    info.appendChild(badge);
+    left.appendChild(icon);
+    left.appendChild(info);
+
+    const right = document.createElement('div');
+    right.className = 'flex gap-2';
+
+    const fightBtn = document.createElement('button');
+    fightBtn.className = 'bg-red-700 hover:bg-red-600 px-3 py-1 rounded text-sm font-bold';
+    fightBtn.setAttribute('aria-label', `戦う: ${q.name}`);
+    fightBtn.textContent = '⚔️ 戦う';
+    fightBtn.addEventListener('click', () => startBattle(i));
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded text-sm';
+    delBtn.setAttribute('aria-label', `削除: ${q.name}`);
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => {
+      state.quests.splice(i, 1);
+      save();
+      render();
+    });
+
+    right.appendChild(fightBtn);
+    right.appendChild(delBtn);
+    div.appendChild(left);
+    div.appendChild(right);
+    listEl.appendChild(div);
+  });
+}
+
+function startBattle(idx) {
+  if (state.activeBoss) return;
+  const q = state.quests[idx];
+  const m = MONSTERS[q.type];
+  state.activeBoss = { ...q, questIdx: idx };
+  state.bossHp = m.hp;
+  save();
+  render();
+  appendLog(`⚡ ${m.name}「${q.name}」が現れた！ HP:${m.hp}`);
+}
+
+function appendLog(msg) {
+  const log = document.getElementById('battle-log');
+  log.textContent += msg + '\n';
+  log.scrollTop = log.scrollHeight;
+}
+
+function attack() {
+  if (!state.activeBoss) return;
+  const m = MONSTERS[state.activeBoss.type];
+  const playerAtk = 20 + state.level * 5 + Math.floor(Math.random() * 15);
+  state.bossHp = Math.max(0, state.bossHp - playerAtk);
+  appendLog(`⚔️ あなたの攻撃！ ${playerAtk}ダメージ！（残りHP: ${state.bossHp}）`);
+
+  if (state.bossHp <= 0) {
+    appendLog(`✨ ${m.name}を倒した！ XP +${m.xp}！`);
+    state.xp += m.xp;
+    state.defeated++;
+    state.quests.splice(state.activeBoss.questIdx, 1);
+    state.activeBoss = null;
+    state.bossHp = 0;
+    checkLevelUp();
+    save();
+    setTimeout(() => render(), 800);
+    return;
+  }
+
+  const bossDmg = Math.floor(m.dmg * (0.7 + Math.random() * 0.6));
+  state.hp = Math.max(0, state.hp - bossDmg);
+  appendLog(`💢 ${m.name}の反撃！ ${bossDmg}ダメージ！（あなたHP: ${state.hp}）`);
+
+  if (state.hp <= 0) {
+    state.hp = Math.floor(state.maxHp * 0.3);
+    appendLog(`💔 力尽きた...HPを30%回復して復活！`);
+    state.activeBoss = null;
+    state.bossHp = 0;
+  }
+  save();
+  render();
+}
+
+function flee() {
+  if (!state.activeBoss) return;
+  appendLog('🏃 逃げた！ でも先延ばしは続く...');
+  state.activeBoss = null;
+  state.bossHp = 0;
+  save();
+  setTimeout(() => render(), 1000);
+}
+
+function checkLevelUp() {
+  while (state.xp >= xpThreshold(state.level)) {
+    state.xp -= xpThreshold(state.level);
+    state.level++;
+    state.maxHp += 20;
+    state.hp = state.maxHp;
+    document.getElementById('levelup-msg').textContent = `レベル ${state.level} に到達！ 最大HP +20！`;
+    document.getElementById('levelup-popup').classList.remove('hidden');
+  }
+}
+
+document.getElementById('btn-add-task').addEventListener('click', () => {
+  const name = document.getElementById('task-name').value.trim();
+  if (!name) return;
+  const type = document.getElementById('task-difficulty').value;
+  state.quests.push({ name, type });
+  document.getElementById('task-name').value = '';
+  save();
+  render();
+});
+
+document.getElementById('task-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btn-add-task').click();
+});
+
+document.getElementById('btn-attack').addEventListener('click', attack);
+document.getElementById('btn-flee').addEventListener('click', flee);
+document.getElementById('btn-close-levelup').addEventListener('click', () => {
+  document.getElementById('levelup-popup').classList.add('hidden');
+});
+
+render();
+</script>
+</body>
+</html>
